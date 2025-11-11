@@ -1,7 +1,10 @@
 package dev.cluely.keyboard.data.screenshot
 
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -33,30 +36,55 @@ class ScreenshotService : Service() {
     private var mediaProjection: MediaProjection? = null
     private var mediaProjectionManager: MediaProjectionManager? = null
     private val scope = CoroutineScope(Dispatchers.Main)
+    private var resultReceiver: BroadcastReceiver? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        registerResultReceiver()
         startCapture()
         return START_NOT_STICKY
+    }
+
+    private fun registerResultReceiver() {
+        resultReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == MediaProjectionActivity.ACTION_MEDIA_PROJECTION_RESULT) {
+                    val resultCode = intent.getIntExtra(MediaProjectionActivity.EXTRA_RESULT_CODE, -1)
+                    val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(MediaProjectionActivity.EXTRA_RESULT_DATA, Intent::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra<Intent>(MediaProjectionActivity.EXTRA_RESULT_DATA)
+                    }
+                    
+                    if (resultCode == android.app.Activity.RESULT_OK && resultData != null) {
+                        mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, resultData)
+                        captureScreenshot()
+                    } else {
+                        Log.e("ScreenshotService", "MediaProjection permission denied")
+                        stopSelf()
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter(MediaProjectionActivity.ACTION_MEDIA_PROJECTION_RESULT)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(resultReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(resultReceiver, filter)
+        }
     }
 
     private fun startCapture() {
         try {
             mediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            val intent = mediaProjectionManager?.createScreenCaptureIntent()
-            if (intent != null) {
-                startActivityForResult(intent, SCREEN_CAPTURE_REQUEST_CODE)
+            val intent = Intent(this, MediaProjectionActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
+            startActivity(intent)
         } catch (e: Exception) {
             Log.e("ScreenshotService", "Error starting capture", e)
             stopSelf()
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == SCREEN_CAPTURE_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
-            mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, data)
-            captureScreenshot()
         }
     }
 
@@ -127,13 +155,16 @@ class ScreenshotService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        resultReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                Log.e("ScreenshotService", "Error unregistering receiver", e)
+            }
+        }
         scope.cancel()
         mediaProjection?.stop()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    companion object {
-        private const val SCREEN_CAPTURE_REQUEST_CODE = 1000
-    }
 }

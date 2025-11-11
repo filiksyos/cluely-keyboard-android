@@ -27,6 +27,15 @@
             </intent-filter>
         </activity>
 
+        <!-- Media Projection Activity (transparent) -->
+        <activity
+            android:name=".data.screenshot.MediaProjectionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="" />
+
         <!-- IME Service -->
         <service
             android:name=".ui.ime.CluelyIMEService"

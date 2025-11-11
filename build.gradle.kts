@@ -4,5 +4,5 @@ plugins {
     alias(libs.plugins.android.hilt) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.kotlin.ksp) apply false
-    kotlin(libs.plugins.kotlin.serialization.get().pluginId).version(libs.versions.kotlin).apply(false)
+    alias(libs.plugins.kotlin.serialization) apply false
 }

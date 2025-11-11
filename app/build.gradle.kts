@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.hilt)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlin.ksp)
-    kotlin(libs.plugins.kotlin.serialization.get().pluginId).version(libs.versions.kotlin)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -50,6 +50,24 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+// Fix for Gradle 9.0+ configuration role restrictions
+// Apply both immediately and after evaluation to catch dynamically created configurations
+configurations.all {
+    if (name.endsWith("RuntimeClasspathCopy")) {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+}
+
+afterEvaluate {
+    configurations.all {
+        if (name.endsWith("RuntimeClasspathCopy")) {
+            isCanBeConsumed = false
+            isCanBeResolved = true
         }
     }
 }

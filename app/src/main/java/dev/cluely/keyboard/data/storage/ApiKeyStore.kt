@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 val Context.datastore by preferencesDataStore("cluely_preferences")
@@ -31,13 +32,6 @@ class ApiKeyStore(private val context: Context) {
     }
 
     suspend fun getApiKey(): String {
-        val pref = context.datastore.data.map { it[API_KEY] ?: "" }
-        var result = ""
-        pref.collect { result = it }
-        return result
+        return context.datastore.data.map { it[API_KEY] ?: "" }.first()
     }
-}
-
-suspend inline fun <T> kotlinx.coroutines.flow.Flow<T>.collect(crossinline action: suspend (T) -> Unit) {
-    kotlinx.coroutines.flow.collect(this) { action(it) }
 }

@@ -27,6 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dagger.hilt.android.AndroidEntryPoint
 import dev.cluely.keyboard.data.api.OpenRouterClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,6 +42,7 @@ class ChatOverlayService : Service() {
 
     private var windowManager: WindowManager? = null
     private var composeView: ComposeView? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -85,22 +90,24 @@ class ChatOverlayService : Service() {
 
             // Analyze screenshot
             analysisState.value = "Analyzing..."
-            openRouterClient.analyzeScreenshot(screenshotBase64, null).onSuccess { analysis ->
-                analysisState.value = analysis
-                // Update compose view
-                composeView?.setContent {
-                    ChatOverlay(
-                        initialAnalysis = analysis,
-                        chatResponse = chatState.value
-                    )
-                }
-            }.onFailure { error ->
-                analysisState.value = "Error: ${error.message}"
-                composeView?.setContent {
-                    ChatOverlay(
-                        initialAnalysis = "Error analyzing screenshot: ${error.message}",
-                        chatResponse = ""
-                    )
+            serviceScope.launch {
+                openRouterClient.analyzeScreenshot(screenshotBase64, null).onSuccess { analysis ->
+                    analysisState.value = analysis
+                    // Update compose view
+                    composeView?.setContent {
+                        ChatOverlay(
+                            initialAnalysis = analysis,
+                            chatResponse = chatState.value
+                        )
+                    }
+                }.onFailure { error ->
+                    analysisState.value = "Error: ${error.message}"
+                    composeView?.setContent {
+                        ChatOverlay(
+                            initialAnalysis = "Error analyzing screenshot: ${error.message}",
+                            chatResponse = ""
+                        )
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -111,6 +118,7 @@ class ChatOverlayService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.cancel()
         try {
             if (composeView != null) {
                 windowManager?.removeView(composeView)

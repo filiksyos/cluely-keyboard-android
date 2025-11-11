@@ -1,6 +1,7 @@
 package dev.cluely.keyboard.di
 
 import android.content.Context
+import android.view.WindowManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,5 +48,11 @@ object AppModule {
         apiKeyStore: ApiKeyStore
     ): OpenRouterClient {
         return OpenRouterClient(httpClient, apiKeyStore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWindowManager(@ApplicationContext context: Context): WindowManager {
+        return context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     }
 }
