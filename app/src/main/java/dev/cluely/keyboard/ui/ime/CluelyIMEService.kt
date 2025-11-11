@@ -27,10 +27,16 @@ class CluelyIMEService : InputMethodService() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
             )
+            // Set background to match keyboard theme
+            setBackgroundColor(android.graphics.Color.parseColor("#1E1E1E"))
         }
 
         // Create keyboard view
         keyboardView = KeyboardView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
             setKeyboardListener { key, code ->
                 when {
                     code == SCREENSHOT_KEY_CODE -> {
