@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">Cluely Keyboard</string>
     <string name="ime_name">Cluely Keyboard</string>
+    <string name="screenshot_notification_channel_name">Screenshot Service</string>
+    <string name="screenshot_notification_channel_description">Service for capturing screenshots</string>
+    <string name="screenshot_notification_title">Capturing screenshot</string>
+    <string name="screenshot_notification_text">Taking a screenshot...</string>
 </resources>

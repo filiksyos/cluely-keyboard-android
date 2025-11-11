@@ -1,5 +1,7 @@
 package dev.cluely.keyboard.data.screenshot
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -38,11 +40,45 @@ class ScreenshotService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main)
     private var resultReceiver: BroadcastReceiver? = null
 
+    companion object {
+        private const val NOTIFICATION_ID = 1
+        private const val CHANNEL_ID = "screenshot_channel"
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Start as foreground service before using MediaProjection (required for Android 10+)
+        startForeground(NOTIFICATION_ID, createNotification())
         registerResultReceiver()
         startCapture()
         return START_NOT_STICKY
     }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                getString(R.string.screenshot_notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = getString(R.string.screenshot_notification_channel_description)
+            }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
+        .setContentTitle(getString(R.string.screenshot_notification_title))
+        .setContentText(getString(R.string.screenshot_notification_text))
+        .setSmallIcon(android.R.drawable.ic_menu_camera)
+        .setOngoing(false)
+        .setPriority(NotificationCompat.PRIORITY_LOW)
+        .build()
 
     private fun registerResultReceiver() {
         resultReceiver = object : BroadcastReceiver() {
@@ -61,6 +97,7 @@ class ScreenshotService : Service() {
                         captureScreenshot()
                     } else {
                         Log.e("ScreenshotService", "MediaProjection permission denied")
+                        stopForeground(true)
                         stopSelf()
                     }
                 }
@@ -84,6 +121,7 @@ class ScreenshotService : Service() {
             startActivity(intent)
         } catch (e: Exception) {
             Log.e("ScreenshotService", "Error starting capture", e)
+            stopForeground(true)
             stopSelf()
         }
     }
@@ -127,6 +165,7 @@ class ScreenshotService : Service() {
             } catch (e: Exception) {
                 Log.e("ScreenshotService", "Error capturing screenshot", e)
             } finally {
+                stopForeground(true)
                 stopSelf()
             }
         }
